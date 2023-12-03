@@ -62,7 +62,21 @@ func (p GoBuildProcess) Execute(config GoBuildConfiguration) ([]string, error) {
 		config.Flags = append(config.Flags, "-trimpath")
 	}
 
-	args := append([]string{"build", "-o", config.Output}, config.Flags...)
+	var args []string
+	if containsFlag(config.Flags, "-C") {
+		chDir := config.Flags[:2]
+		remainingFlags := config.Flags[2:]
+		if containsFlag(config.Flags, "-C=") {
+			chDir = config.Flags[:1]
+			remainingFlags = config.Flags[1:]
+		}
+		args = append([]string{"build"}, chDir...)
+		args = append(args, "-o", config.Output)
+		args = append(args, remainingFlags...)
+	} else {
+		args = append([]string{"build", "-o", config.Output}, config.Flags...)
+	}
+
 	args = append(args, config.Targets...)
 
 	env := append(os.Environ(), fmt.Sprintf("GOCACHE=%s", config.GoCache))
