@@ -42,12 +42,24 @@ func (p BuildConfigurationParser) Parse(buildpackVersion, workingDir string) (Bu
 	}
 
 	var buildConfiguration BuildConfiguration
+
+	buildConfiguration.Flags, err = parseFlagsFromEnvVars(buildConfiguration.Flags)
+	if err != nil {
+		return BuildConfiguration{}, err
+	}
+
 	if val, ok := os.LookupEnv("BP_GO_TARGETS"); ok {
 		buildConfiguration.Targets = filepath.SplitList(val)
 	}
 
 	if len(buildConfiguration.Targets) > 0 {
-		buildConfiguration.Targets, err = p.targetManager.CleanAndValidate(buildConfiguration.Targets, workingDir)
+    // TODO: should this be outside the if?
+		chDir := workingDir
+		if containsFlag(buildConfiguration.Flags, "-C") {
+			chDir = buildConfiguration.Flags[1]
+		}
+
+		buildConfiguration.Targets, err = p.targetManager.CleanAndValidate(buildConfiguration.Targets, chDir)
 		if err != nil {
 			return BuildConfiguration{}, err
 		}
@@ -56,11 +68,6 @@ func (p BuildConfigurationParser) Parse(buildpackVersion, workingDir string) (Bu
 		if err != nil {
 			return BuildConfiguration{}, err
 		}
-	}
-
-	buildConfiguration.Flags, err = parseFlagsFromEnvVars(buildConfiguration.Flags)
-	if err != nil {
-		return BuildConfiguration{}, err
 	}
 
 	if val, ok := os.LookupEnv("BP_GO_BUILD_IMPORT_PATH"); ok {
